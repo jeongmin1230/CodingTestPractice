@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "580978635631",
+    "project_id": "coding-test-practice",
+    "storage_bucket": "coding-test-practice.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:580978635631:android:8c9c1130fa59f76a82ee9a",
+        "android_client_info": {
+          "package_name": "com.example.codingtestpractice"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "580978635631-ukm0v6srspgnia90mabq7ej7mkv857q6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.codingtestpractice",
+            "certificate_hash": "20618e80fa756d94d280806d111d2e7e4ef32464"
+          }
+        },
+        {
+          "client_id": "580978635631-2haor7mc70v7011vpnkogmo8mvh69c4s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCPfakQhvtOgsQacg9fHH6gOfD6TBAVl50"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "580978635631-2haor7mc70v7011vpnkogmo8mvh69c4s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
