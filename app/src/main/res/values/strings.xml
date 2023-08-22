@@ -2,4 +2,8 @@
     <string name="app_name">CodingTestPractice</string>
     <string name="programmers">프로그래머스</string>
     <string name="ic_arrow_right">ic arrow right</string>
+    <string name="ic_back">ic back</string>
+    <string name="question_detail">문제 내용</string>
+    <string name="hint_detail">힌트</string>
+    <string name="hint">hint</string>
 </resources>
