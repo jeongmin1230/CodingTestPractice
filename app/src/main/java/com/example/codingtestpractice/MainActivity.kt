@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,6 +54,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    val detailQuestion = remember { mutableStateOf("") }
+    val detailHint = remember { mutableStateOf("") }
     NavHost(navController, startDestination = "select_problem") {
         composable("select_problem") {
             Column(Modifier.fillMaxSize()) {
@@ -61,7 +64,7 @@ fun MainScreen() {
         }
         composable("show_detail/{title}", arguments = listOf(navArgument("title") { type = NavType.StringType})) {
             Column(Modifier.fillMaxSize()) {
-                ShowDetail(it.arguments?.getString("title").toString(), navController)
+                ShowDetail(it.arguments?.getString("title").toString(), navController, detailQuestion, detailHint)
             }
         }
     }
@@ -69,42 +72,64 @@ fun MainScreen() {
 
 @Composable
 fun SelectProblem(navController: NavHostController) {
-    val context = LocalContext.current
-    val problemTitleState = remember { mutableStateOf(emptyList<String>()) }
     val problemTitleRef = FirebaseDatabase.getInstance().getReference("problem")
+    val day1TitleState = remember { mutableStateOf(emptyList<String>()) }
+    val day2TitleState = remember { mutableStateOf(emptyList<String>()) }
     val day1Ref = problemTitleRef.child("day 1")
+    val day2Ref = problemTitleRef.child("day 2")
 
+    val day1VEL = valueEventListener(day1TitleState)
+    val day2VEL = valueEventListener(day2TitleState)
+    day1Ref.addValueEventListener(day1VEL)
+    day2Ref.addValueEventListener(day2VEL)
+
+    Column {
+        PrintDay(day1Ref.key.toString())
+        day1TitleState.value.forEach { title ->
+            ItemLayout(title) {
+                navController.navigate("show_detail/$title")
+            }
+        }
+        Divider()
+        PrintDay(day2Ref.key.toString())
+        day2TitleState.value.forEach { title ->
+            ItemLayout(title) {
+                navController.navigate(("show_detail/$title"))
+            }
+        }
+    }
+}
+
+@Composable
+fun valueEventListener(titleList: MutableState<List<String>>) : ValueEventListener {
+    val context = LocalContext.current
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            val day1List = mutableListOf<String>()
+            val problemList = mutableListOf<String>()
             for(childSnapShot in snapshot.children) {
-                val day1Text = childSnapShot.key
-                if(day1Text != null && !day1Text.contains(" " + context.getString(R.string.hint))) {
-                    day1List.add(day1Text.toString())
+                val text = childSnapShot.key ?: ""
+                if(!text.contains(" " + context.getString(R.string.hint))) {
+                    problemList.add(text)
                 }
             }
-            problemTitleState.value = day1List
+            titleList.value = problemList
         }
 
         override fun onCancelled(error: DatabaseError) {
         }
     }
-    day1Ref.addValueEventListener(valueEventListener)
+    return valueEventListener
+}
 
-    Column {
-        Text(
-            text = "[ ${day1Ref.key} ]",
-            style = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp, bottom = 12.dp)
-        )
-        problemTitleState.value.forEach { title ->
-            ItemLayout(title) {
-                navController.navigate("show_detail/$title")
-            }
-        }
-    }
+@Composable
+fun PrintDay(day: String) {
+    Text(
+        text = "[ $day ]",
+        style = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 12.dp)
+    )
 }
 
 @Composable
@@ -130,29 +155,19 @@ fun ItemLayout(title: String, clickAction: () -> Unit) {
 }
 
 @Composable
-fun ShowDetail(title: String, navController: NavHostController) {
-    val context = LocalContext.current
-    val problemDetailState = remember { mutableStateOf(emptyList<String>()) }
+fun ShowDetail(title: String, navController: NavHostController, detail: MutableState<String>, hint: MutableState<String>) {
     val problemDetailRef = FirebaseDatabase.getInstance().getReference("problem")
-    val detail = remember { mutableStateOf("") }
-    val hintDetail = remember { mutableStateOf("") }
-    val detailRef = problemDetailRef.child("day 1")
-    var showDetail by remember { mutableStateOf(false) }
-
-    val valueEventListener = object : ValueEventListener {
-        override fun onDataChange(snapshot: DataSnapshot) {
-            val problemDetail = mutableListOf<String>()
-            val detailText = snapshot.child(title).value
-            val detailHintText = snapshot.child(title + " " + context.getString(R.string.hint)).value
-            detail.value = detailText.toString()
-            hintDetail.value = detailHintText.toString()
-            problemDetailState.value = problemDetail
-        }
-
-        override fun onCancelled(error: DatabaseError) {
-        }
-    }
-    detailRef.addValueEventListener(valueEventListener)
+    val day1Detail = remember { mutableStateOf("") }
+    val day2Detail = remember { mutableStateOf("") }
+    val day1HintDetail = remember { mutableStateOf("") }
+    val day2HintDetail = remember { mutableStateOf("") }
+    val day1Ref = problemDetailRef.child("day 1")
+    val day2Ref = problemDetailRef.child("day 2")
+    val showDetail = remember { mutableStateOf(false) }
+    val day1VEL = detailValueEventListener(title, day1Detail, day1HintDetail)
+    val day2VEL = detailValueEventListener(title, day2Detail, day2HintDetail)
+    day1Ref.addValueEventListener(day1VEL)
+    day2Ref.addValueEventListener(day2VEL)
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -162,12 +177,16 @@ fun ShowDetail(title: String, navController: NavHostController) {
                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_back),
                 contentDescription = stringResource(id = R.string.ic_back),
                 modifier = Modifier
-                    .clickable(interactionSource = MutableInteractionSource(), indication = null) { navController.popBackStack() }
+                    .clickable {
+                        detail.value = ""
+                        hint.value = ""
+                        navController.popBackStack() }
                     .padding(horizontal = 10.dp)
             )
             Text(text = title)
         }
-        Column(modifier = Modifier
+        DetailQuestionHint(showDetail, detail, hint)
+/*        Column(modifier = Modifier
             .padding(all = 12.dp)
             .fillMaxWidth()
             .background(Color(0XFFD09AFF))) {
@@ -177,7 +196,7 @@ fun ShowDetail(title: String, navController: NavHostController) {
                 modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 10.dp)
             )
             Text(
-                text = detail.value,
+                text = day1Detail.value,
                 style = MaterialTheme.typography.bodySmall.copy(Color.Black),
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
             )
@@ -187,17 +206,72 @@ fun ShowDetail(title: String, navController: NavHostController) {
             .height(100.dp)
             .fillMaxWidth()
             .clickable { showDetail = !showDetail }
-            .background(if(showDetail) Color(0XFFD09AFF) else Color(0XFFD09AFF).copy(alpha = 0.5f))) {
+            .background(if (showDetail) Color(0XFFD09AFF) else Color(0XFFD09AFF).copy(alpha = 0.5f))) {
             Text(
                 text = stringResource(id = R.string.hint_detail),
                 style = MaterialTheme.typography.bodyMedium.copy(Color.Black),
                 modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 10.dp)
             )
             Text(
-                text = if(showDetail) hintDetail.value else "",
+                text = if(showDetail) day1HintDetail.value else "",
                 style = MaterialTheme.typography.bodySmall.copy(Color.Black),
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
             )
+        }*/
+    }
+}
+
+@Composable
+fun detailValueEventListener(title: String, detail: MutableState<String>, hintDetail: MutableState<String>): ValueEventListener {
+    val context = LocalContext.current
+    println("detail in VEL ${detail.value}")
+    println("hint in VEL ${hintDetail.value}")
+    val valueEventListener = object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            val detailText = snapshot.child(title).value
+            val detailHintText = snapshot.child(title + " " + context.getString(R.string.hint)).value
+            detail.value = detailText.toString()
+            hintDetail.value = detailHintText.toString()
         }
+
+        override fun onCancelled(error: DatabaseError) {
+        }
+    }
+    return valueEventListener
+}
+
+@Composable
+fun DetailQuestionHint(showDetail: MutableState<Boolean>, detailQuestion: MutableState<String>, detailHint: MutableState<String>) {
+    Column(modifier = Modifier
+        .padding(all = 12.dp)
+        .fillMaxWidth()
+        .background(Color(0XFFD09AFF))) {
+        Text(
+            text = stringResource(id = R.string.question_detail),
+            style = MaterialTheme.typography.bodyMedium.copy(Color.Black),
+            modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 10.dp)
+        )
+        Text(
+            text = detailQuestion.value,
+            style = MaterialTheme.typography.bodySmall.copy(Color.Black),
+            modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+        )
+    }
+    Column(modifier = Modifier
+        .padding(all = 12.dp)
+        .height(100.dp)
+        .fillMaxWidth()
+        .clickable { showDetail.value = !showDetail.value }
+        .background(if (showDetail.value) Color(0XFFD09AFF) else Color(0XFFD09AFF).copy(alpha = 0.5f))) {
+        Text(
+            text = stringResource(id = R.string.hint_detail),
+            style = MaterialTheme.typography.bodyMedium.copy(Color.Black),
+            modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 10.dp)
+        )
+        Text(
+            text = if(showDetail.value) detailHint.value else "",
+            style = MaterialTheme.typography.bodySmall.copy(Color.Black),
+            modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+        )
     }
 }
