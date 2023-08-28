@@ -6,4 +6,5 @@
     <string name="question_detail">문제 내용</string>
     <string name="hint_detail">힌트</string>
     <string name="hint">hint</string>
+    <string name="fail">문제 정보를 가져오지 못했습니다. 다시 시도 해 주세요.</string>
 </resources>
