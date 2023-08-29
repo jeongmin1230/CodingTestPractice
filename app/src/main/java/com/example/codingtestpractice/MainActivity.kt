@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen() {
     val navController = rememberNavController()
     val detailQuestion = remember { mutableStateOf("") }
+    val detailRestrictions = remember { mutableStateOf("") }
     val detailHint = remember { mutableStateOf("") }
     NavHost(navController, startDestination = "select_problem") {
         composable("select_problem") {
@@ -66,7 +67,7 @@ fun MainScreen() {
             val title = it.arguments?.getString("title") ?: ""
             val day = it.arguments?.getString("day") ?: ""
             Column(Modifier.fillMaxSize()) {
-                ShowDetail(day, title, navController, detailQuestion, detailHint)
+                ShowDetail(day, title, navController, detailQuestion, detailRestrictions, detailHint)
             }
         }
     }
@@ -76,15 +77,15 @@ fun MainScreen() {
 fun SelectProblem(navController: NavHostController) {
     val problemTitleRef = FirebaseDatabase.getInstance().getReference("problem")
 
-    val dayTitleStates = List(5) { remember { mutableStateOf(emptyList<String>()) }}
-    val dayRefs = List(5) { problemTitleRef.child("day ${it + 1}")}
-    val dayVELs = List(5) { valueEventListener(dayTitleStates[it])}
+    val dayTitleStates = List(17) { remember { mutableStateOf(emptyList<String>()) }}
+    val dayRefs = List(17) { problemTitleRef.child("day ${it + 1}")}
+    val dayVELs = List(17) { valueEventListener(dayTitleStates[it])}
 
     dayRefs.forEachIndexed { index, dayRef ->
         dayRef.addValueEventListener(dayVELs[index])
     }
     Column(Modifier.verticalScroll(rememberScrollState())) {
-        repeat(5) { dayIndex ->
+        repeat(17) { dayIndex ->
             val dayRef = dayRefs[dayIndex]
             val dayTitleState = dayTitleStates[dayIndex]
 
@@ -101,15 +102,12 @@ fun SelectProblem(navController: NavHostController) {
 
 @Composable
 fun valueEventListener(titleList: MutableState<List<String>>) : ValueEventListener {
-    val context = LocalContext.current
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
             val problemList = mutableListOf<String>()
             for(childSnapShot in snapshot.children) {
                 val text = childSnapShot.key ?: ""
-                if(!text.contains(" " + context.getString(R.string.hint))) {
-                    problemList.add(text)
-                }
+                problemList.add(text)
             }
             titleList.value = problemList
         }
@@ -154,10 +152,10 @@ fun ItemLayout(title: String, clickAction: () -> Unit) {
 }
 
 @Composable
-fun ShowDetail(day: String, title: String, navController: NavHostController, detail: MutableState<String>, hint: MutableState<String>) {
+fun ShowDetail(day: String, title: String, navController: NavHostController, detail: MutableState<String>, restrictions: MutableState<String>, hint: MutableState<String>) {
     val problemDetailRef = FirebaseDatabase.getInstance().getReference("problem")
     val dayRef = problemDetailRef.child(day)
-    val dayVEL = detailValueEventListener(title, detail, hint)
+    val dayVEL = detailValueEventListener(title, detail, restrictions, hint)
     val showDetail = remember { mutableStateOf(false) }
     dayRef.addValueEventListener(dayVEL)
 
@@ -175,18 +173,22 @@ fun ShowDetail(day: String, title: String, navController: NavHostController, det
             )
             Text(text = title)
         }
-        DetailQuestionHint(showDetail, detail, hint)
+        DetailQuestionHint(showDetail, detail, restrictions, hint)
     }
 }
 
 @Composable
-fun detailValueEventListener(title: String, detail: MutableState<String>, hintDetail: MutableState<String>): ValueEventListener {
+fun detailValueEventListener(title: String, detail: MutableState<String>, restrictions: MutableState<String>, hintDetail: MutableState<String>): ValueEventListener {
     val context = LocalContext.current
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            val detailText = snapshot.child(title).value
-            val detailHintText = snapshot.child(title + " " + context.getString(R.string.hint)).value
+            val detailText = snapshot.child(title).child(context.getString(R.string.question_detail)).value
+            val detailRestrictions = snapshot.child(title).child(context.getString(R.string.restrictions)).value
+            val detailHintText = snapshot.child(title).child(context.getString(R.string.hint_detail)).value
             detail.value = detailText.toString()
+            if(detailRestrictions.toString().isNotEmpty()) {
+                restrictions.value = detailRestrictions.toString()
+            }
             hintDetail.value = detailHintText.toString()
         }
 
@@ -197,7 +199,7 @@ fun detailValueEventListener(title: String, detail: MutableState<String>, hintDe
 }
 
 @Composable
-fun DetailQuestionHint(showDetail: MutableState<Boolean>, detailQuestion: MutableState<String>, detailHint: MutableState<String>) {
+fun DetailQuestionHint(showDetail: MutableState<Boolean>, detailQuestion: MutableState<String>, detailRestrictions: MutableState<String>, detailHint: MutableState<String>) {
     Column(modifier = Modifier
         .padding(all = 12.dp)
         .fillMaxWidth()
@@ -213,6 +215,24 @@ fun DetailQuestionHint(showDetail: MutableState<Boolean>, detailQuestion: Mutabl
             modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
         )
     }
+    if(detailRestrictions.value != "null") {
+        Column(modifier = Modifier
+            .padding(all = 12.dp)
+            .fillMaxWidth()
+            .background(Color(0XFFD09AFF))) {
+            Text(
+                text = stringResource(id = R.string.restrictions),
+                style = MaterialTheme.typography.bodyMedium.copy(Color.DarkGray),
+                modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 10.dp)
+            )
+            Text(
+                text = detailRestrictions.value,
+                style = MaterialTheme.typography.bodySmall.copy(Color.Black),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+            )
+        }
+    }
+
     Column(modifier = Modifier
         .padding(all = 12.dp)
         .height(100.dp)
