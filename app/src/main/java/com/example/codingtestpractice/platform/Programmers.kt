@@ -33,7 +33,8 @@ import com.google.firebase.database.ValueEventListener
 fun ProgrammersScreen(homeNavController: NavHostController) {
     val programmersNavController = rememberNavController()
     val detailQuestion = remember { mutableStateOf("") }
-    val detailHint = remember { mutableStateOf("") }
+    val detailConstraint = remember { mutableStateOf(emptyList<String>()) }
+    val detailHint = remember { mutableStateOf(emptyList<String>()) }
     NavHost(programmersNavController, startDestination = "problemList") {
         composable("problemList") {
             Column(Modifier.padding(all = 10.dp)) {
@@ -52,7 +53,7 @@ fun ProgrammersScreen(homeNavController: NavHostController) {
             )) {
             val title = it.arguments?.getString("title") ?: ""
             val day = it.arguments?.getString("day") ?: ""
-            ShowDetail(day, title, programmersNavController, detailQuestion, detailHint)
+            ShowDetail(day, title, programmersNavController, detailQuestion, detailConstraint, detailHint)
         }
     }
 }
@@ -115,10 +116,10 @@ fun EachProblem(title: String, select: () -> Unit) {
 }
 
 @Composable
-fun ShowDetail(day: String, title: String, navController: NavHostController, detail: MutableState<String>, hint: MutableState<String>) {
-    val problemDetailRef = FirebaseDatabase.getInstance().getReference("problem")
-    val dayRef = problemDetailRef.child(day)
-    val dayVEL = detailValueEventListener(title, detail, hint)
+fun ShowDetail(day: String, title: String, navController: NavHostController, detailQuestion: MutableState<String>, detailConstraint: MutableState<List<String>>, detailHint: MutableState<List<String>>) {
+    val programmersDetailRef = FirebaseDatabase.getInstance().getReference("programmers")
+    val dayRef = programmersDetailRef.child(day)
+    val dayVEL = detailValueEventListener(title, detailQuestion, detailConstraint, detailHint)
     val showDetail = remember { mutableStateOf(false) }
     dayRef.addValueEventListener(dayVEL)
 
@@ -136,12 +137,12 @@ fun ShowDetail(day: String, title: String, navController: NavHostController, det
             )
             Text(text = title)
         }
-        DetailQuestionHint(showDetail, detail, hint)
+        DetailQuestionHint(showDetail, detailQuestion, detailConstraint, detailHint)
     }
 }
 
 @Composable
-fun DetailQuestionHint(showDetail: MutableState<Boolean>, detailQuestion: MutableState<String>, detailHint: MutableState<String>) {
+fun DetailQuestionHint(showDetail: MutableState<Boolean>, detailQuestion: MutableState<String>, detailConstraint: MutableState<List<String>>, detailHint: MutableState<List<String>>) {
     Column(modifier = Modifier
         .padding(all = 12.dp)
         .fillMaxWidth()
@@ -159,20 +160,42 @@ fun DetailQuestionHint(showDetail: MutableState<Boolean>, detailQuestion: Mutabl
     }
     Column(modifier = Modifier
         .padding(all = 12.dp)
+        .fillMaxWidth()
+        .background(Color(0XFFD09AFF))) {
+        Text(
+            text = stringResource(id = R.string.constraint_detail),
+            style = MaterialTheme.typography.bodyMedium.copy(Color.Black),
+            modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 10.dp)
+        )
+        detailConstraint.value.forEach { constraint ->
+            Text(
+                text = "∙ $constraint",
+                style = MaterialTheme.typography.bodySmall.copy(Color.Black),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+            )
+        }
+    }
+
+    Column(modifier = Modifier
+        .padding(all = 12.dp)
         .height(100.dp)
         .fillMaxWidth()
         .clickable { showDetail.value = !showDetail.value }
-        .background(if (showDetail.value) Color(0XFFD09AFF) else Color(0XFFD09AFF).copy(alpha = 0.5f))) {
+        .background(if(showDetail.value) Color(0XFFD09AFF) else Color(0XFFD09AFF).copy(alpha = 0.5f))) {
         Text(
             text = stringResource(id = R.string.hint_detail),
             style = MaterialTheme.typography.bodyMedium.copy(Color.Black),
             modifier = Modifier.padding(start = 14.dp, top = 12.dp, bottom = 10.dp)
         )
-        Text(
-            text = if(showDetail.value) detailHint.value else "",
-            style = MaterialTheme.typography.bodySmall.copy(Color.Black),
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-        )
+        if(showDetail.value) {
+            detailHint.value.forEach { hint ->
+                Text(
+                    text = "∙ $hint",
+                    style = MaterialTheme.typography.bodySmall.copy(Color.Black),
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                )
+            }
+        }
     }
 }
 
@@ -195,15 +218,21 @@ fun valueEventListener(titleList: MutableState<List<String>>) : ValueEventListen
 }
 
 @Composable
-fun detailValueEventListener(title: String, detail: MutableState<String>, hintDetail: MutableState<String>): ValueEventListener {
+fun detailValueEventListener(title: String, detailQuestion: MutableState<String>, detailConstraint: MutableState<List<String>>, detailHint: MutableState<List<String>>): ValueEventListener {
     val context = LocalContext.current
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            val detailText = snapshot.child(title).child(context.getString(R.string.question_detail)).value
-            println("detail $detailText")
-            val detailHintText = snapshot.child(title).child(context.getString(R.string.hint_detail)).value
-            detail.value = detailText.toString()
-            hintDetail.value = detailHintText.toString()
+            detailQuestion.value = snapshot.child(title).child(context.getString(R.string.question_detail)).value.toString()
+            val constraintList = mutableListOf<String>()
+            snapshot.child(title).child(context.getString(R.string.constraint_detail)).children.forEachIndexed { _, constraint ->
+                constraintList.add(constraint.value.toString())
+            }
+            detailConstraint.value = constraintList
+            val hintList = mutableListOf<String>()
+            snapshot.child(title).child(context.getString(R.string.hint_detail)).children.forEachIndexed { _, hint ->
+                hintList.add(hint.value.toString())
+            }
+            detailHint.value = hintList
         }
 
         override fun onCancelled(error: DatabaseError) {

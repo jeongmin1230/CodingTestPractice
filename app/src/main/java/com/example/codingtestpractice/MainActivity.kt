@@ -1,6 +1,8 @@
 package com.example.codingtestpractice
 
+import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
@@ -12,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -21,9 +24,12 @@ import androidx.navigation.compose.rememberNavController
 import com.example.codingtestpractice.platform.LeetCodeScreen
 import com.example.codingtestpractice.platform.ProgrammersScreen
 import com.example.codingtestpractice.ui.theme.CodingTestPracticeTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 
 /** 구상 : 처음에 무슨 앱인지 정보, 플랫폼 고르는 화면
- * 고르면 그 플랫폼 에 맞는 문제들 출력, 일단 프로그래머스만 */
+ * 고르면 그 플랫폼 에 맞는 문제들 출력, 일단 프로그래머스 만 */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +54,7 @@ fun MainScreen() {
 
     NavHost(homeNavController, startDestination = "choose") {
         composable("choose") {
+            anonymousLogin()
             Platform(platform, homeNavController)
         }
         composable("programmers") {
@@ -87,4 +94,15 @@ fun EachPlatform(name: String, navController: NavHostController) {
             modifier = Modifier.padding(vertical = 10.dp)
         )
     }
+}
+
+fun anonymousLogin() {
+    val auth = FirebaseAuth.getInstance()
+    val user = auth.currentUser
+    auth.signInAnonymously()
+        .addOnCompleteListener { task ->
+            if(task.isSuccessful) {
+                User.uid = user!!.uid
+            }
+        }
 }

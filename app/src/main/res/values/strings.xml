@@ -4,6 +4,7 @@
     <string name="ic_arrow_right">ic arrow right</string>
     <string name="ic_back">ic back</string>
     <string name="question_detail">문제</string>
+    <string name="constraint_detail">제한 사항</string>
     <string name="hint_detail">힌트</string>
     <string name="restrictions">제한 사항</string>
     <string name="fail">문제 정보를 가져오지 못했습니다. 다시 시도 해 주세요.</string>
